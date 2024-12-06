@@ -1,0 +1,6 @@
+train: D:/duck pro.v9i.yolov8/train/images
+val: D:/duck pro.v9i.yolov8/valid/images
+test: D:/duck pro.v9i.yolov8/test/images
+
+nc: 1
+names: ['normal duck egg']

@@ -1,0 +1,3 @@
+name,layers,parameters,GFLOPs,epoch
+yolov8s_Swin + C3Ghost + DWC,267,4026549,13.24672,560
+YOLOv8s,225,11135987,28.6469632,276

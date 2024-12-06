@@ -1,0 +1,55 @@
+# Ultralytics YOLO 🚀, AGPL-3.0 license
+# YOLOv8 object detection model with P3-P5 outputs. For Usage examples see https://docs.ultralytics.com/tasks/detect
+ 
+# Parameters
+nc: 80  # number of classes
+scales: # model compound scaling constants, i.e. 'model=yolov8n.yaml' will call yolov8.yaml with scale 'n'
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024] # YOLOv8n summary: 225 layers,  3157200 parameters,  3157184 gradients,   8.9 GFLOPs
+  s: [0.33, 0.50, 1024] # YOLOv8s summary: 225 layers, 11166560 parameters, 11166544 gradients,  28.8 GFLOPs
+  m: [0.67, 0.75, 768] # YOLOv8m summary: 295 layers, 25902640 parameters, 25902624 gradients,  79.3 GFLOPs
+  l: [1.00, 1.00, 512] # YOLOv8l summary: 365 layers, 43691520 parameters, 43691504 gradients, 165.7 GFLOPs
+  x: [1.00, 1.25, 512] # YOLOv8x summary: 365 layers, 68229648 parameters, 68229632 gradients, 258.5 GFLOPs
+ 
+# YOLOv8.0 backbone
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]   # 0-P1/2     · 320 × 320 × 64
+  - [-1, 1, DWConv, [128, 3, 2]]  # 1-P2/4     · 160 × 160 × 128
+  - [-1, 3, SwinTransformer, [128, True]]   # 2          · 160 × 160 × 128
+  - [-1, 1, DWConv, [256, 3, 2]]  # 3-P3/8     · 80 × 80 × 256
+  - [-1, 6, C3Ghost, [256, True]]   # 4          · 80 × 80 × 256
+  - [-1, 1, DWConv, [512, 3, 2]]  # 5-P4/16    · 40 × 40 × 512
+  - [-1, 6, C3Ghost, [512, True]]   # 6          · 40 × 40 × 512
+  - [-1, 1, DWConv, [1024, 3, 2]] # 7-P5/32    · 20 × 20 × 1024
+  - [-1, 3, C3Ghost, [1024, True]]  # 8          · 20 × 20 × 1024
+  - [-1, 1, SPPF, [1024, 5]]    # 9          · 20 × 20 × 1024
+ 
+# YOLOv8.0-P2 head
+head:
+  - [-1, 1, Conv, [512, 1, 1]] # 10                             · 20 × 20 × 512
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 11             · 40 × 40 × 512
+  - [[-1, 6], 1, BiFPN_Concat, [256, 256]] # cat backbone P4    · 40 × 40 × 512(11) + 40 × 40 × 512(6)
+  - [-1, 3, C2f, [512]] # 13                                    · 40 × 40 × 512
+ 
+  - [-1, 1, Conv, [256, 1, 1]] # 14                             · 40 × 40 × 256
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 15             · 80 × 80 × 256
+  - [[-1, 4], 1, BiFPN_Concat, [128, 128]] # cat backbone P3    · 80 × 80 × 256(15) + 80 × 80 × 256(4)
+  - [-1, 3, C2f, [256]] # 17 (P3/8-small)                       · 80 × 80 × 256
+ 
+  - [-1, 1, Conv, [128, 1, 1]] # 18                             · 80 × 80 × 128
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 19             · 160 × 160 × 128
+  - [[-1, 2], 1, BiFPN_Concat, [64, 64]] # cat backbone P2      · 160 × 160 × 128(19) + 160 × 160 × 128(2)
+  - [-1, 3, C2f, [128]] # 21 (P2/4-tiny)                        · 160 × 160 × 128
+ 
+  - [2, 1, Conv, [128, 3, 2]] # 22                              · 80 × 80 × 128
+  - [-2, 1, Conv, [128, 3, 2]] # 23                             · 80 × 80 × 128
+  - [[-1, -2, 18], 1, BiFPN_Concat, [64, 64]] # cat head P3     · 80 × 80 × 128(23) + 80 × 80 × 128(22) + 80 × 80 × 128(18)
+  - [-1, 3, C2f, [256]] # 25 (P3/8-small)                       · 80 × 80 × 256
+ 
+  - [4, 1, Conv, [256, 3, 2]] # 26                              · 40 × 40 × 256
+  - [-2, 1, Conv, [256, 3, 2]] # 27                             · 40 × 40 × 256
+  - [[-1, -2, 14], 1, BiFPN_Concat, [128, 128]] # cat head P4   · 40 × 40 × 256(27) + 40 × 40 × 256(26) + 40 × 40 × 256(14)
+  - [-1, 3, C2f, [512]] # 29 (P4/16-medium)                     · 40 × 40 × 512
+ 
+  - [[21, 25, 29], 1, Detect, [nc]] # Detect(P2, P3, P4)
